@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>WordPress to Next.js on Vercel: SEO migration plan and redirect-map checker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#14202b;--mut:#5b6b78;--line:#dde4ea;--bg:#f6f8fa;--acc:#0b6bcb;--ok:#137a3d;--warn:#a15c00;--bad:#b42318}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:#fff;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+header.top{background:var(--ink);color:#fff;padding:44px 0 36px}
+header.top h1{margin:0 0 10px;font-size:clamp(26px,4vw,38px);line-height:1.15}
+header.top p{margin:0;color:#c9d6e0;max-width:760px}
+.tag{display:inline-block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;background:#ffffff1a;padding:3px 9px;border-radius:99px;margin-bottom:14px}
+section{padding:36px 0;border-bottom:1px solid var(--line)}
+h2{font-size:24px;margin:0 0 6px}
+.sub{color:var(--mut);margin:0 0 22px}
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:14px}
+.ph{border:1px solid var(--line);border-radius:10px;padding:16px;background:var(--bg)}
+.ph b{display:block;font-size:13px;color:var(--acc);margin-bottom:4px}
+.ph h3{margin:0 0 8px;font-size:16px}
+.ph ul{margin:0;padding-left:18px;font-size:14px;color:#33434f}
+textarea{width:100%;min-height:210px;font-family:"JetBrains Mono",monospace;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+label{font-weight:600;font-size:14px;display:block;margin-bottom:6px}
+.hint{font-size:13px;color:var(--mut);margin:4px 0 0}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.row label{display:inline;font-weight:400}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 18px;font:600 15px Inter,sans-serif;cursor:pointer}
+button.sec{background:#e8eef4;color:var(--ink)}
+.sum{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.pill{border-radius:99px;padding:4px 12px;font-size:13px;font-weight:600;background:var(--bg);border:1px solid var(--line)}
+.pill.bad{color:var(--bad);border-color:#f3c3be}.pill.warn{color:var(--warn);border-color:#f0d5a8}.pill.ok{color:var(--ok);border-color:#b8e0c6}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--bg);font-weight:600}
+td code,pre{font-family:"JetBrains Mono",monospace;font-size:12.5px}
+.sev{font-weight:700;font-size:12px;text-transform:uppercase}
+.sev.bad{color:var(--bad)}.sev.warn{color:var(--warn)}.sev.info{color:var(--acc)}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+pre{background:#0f1922;color:#d7e3ec;padding:14px;border-radius:8px;overflow:auto;max-height:340px;margin:0}
+.tabs{display:flex;gap:6px;margin:18px 0 8px}
+.tabs button{padding:6px 12px;font-size:13px}
+.check{columns:2;column-gap:28px}
+@media(max-width:760px){.check{columns:1}}
+.check div{break-inside:avoid;margin:0 0 14px}
+.check h3{font-size:15px;margin:0 0 4px}
+.check p{margin:0;font-size:14px;color:#33434f}
+.note{font-size:13px;color:var(--mut)}
+.cfgh{margin:26px 0 4px}
+footer{padding:28px 0 40px;color:var(--mut);font-size:14px}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+<span class="tag">Work sample · technical SEO for a site migration</span>
+<h1>WordPress (Elementor) to Next.js on Vercel: keeping the rankings</h1>
+<p>How the SEO side of the move is run, what the developer gets as written requirements, and a working tool from the toolkit: a redirect-map checker that finds chains, loops, gaps and risky rules, then writes the <code>next.config.js</code> and <code>vercel.json</code> redirects. Everything runs in this page; nothing you paste leaves your browser.</p>
+</div></header>
+
+<main>
+<section><div class="wrap">
+<h2>The approach, in five steps</h2>
+<p class="sub">Advisory and QA only: the developer builds, this work makes sure nothing that ranks today gets lost on the way.</p>
+<div class="phases">
+<div class="ph"><b>Step 1</b><h3>Inventory</h3><ul><li>Full crawl of the live site: every URL, status, title, meta description, canonical, H1, robots, schema types</li><li>XML sitemaps and Search Console pages export merged in, so pages with traffic but no internal links are not missed</li><li>Top pages by clicks and backlinks flagged as "must keep"</li></ul></div>
+<div class="ph"><b>Step 2</b><h3>Risk review</h3><ul><li>WordPress URL patterns: categories, tags, pagination, feeds, <code>?p=</code> IDs, attachment pages, uploads</li><li>Trailing slash and case rules</li><li>Rendering: content must be in the server HTML, not filled in later by the browser</li></ul></div>
+<div class="ph"><b>Step 3</b><h3>Requirements</h3><ul><li>One written sheet for the developer (below)</li><li>A redirect map, old URL to final new URL, checked with the tool on this page</li><li>Metadata and schema mapped per template</li></ul></div>
+<div class="ph"><b>Step 4</b><h3>Staging QA</h3><ul><li>Crawl the staging build and compare with the inventory, page for page</li><li>Every old URL tested against the redirects: one hop, 301/308, ends on a 200</li><li>Preview builds kept out of the index</li></ul></div>
+<div class="ph"><b>Step 5</b><h3>Launch and after</h3><ul><li>Same checks on the live domain within hours of the switch</li><li>New sitemap submitted, Search Console coverage and 404s watched</li><li>Short report: what was checked, what was fixed, what to watch</li></ul></div>
+</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Redirect-map checker</h2>
+<p class="sub">Paste the redirect map (one rule per line: <code>old, new</code> and an optional status code). Optionally paste the list of old URLs from the crawl or a Search Console export: the checker then also lists old URLs that no rule covers. The example data below is invented and holds a few typical mistakes.</p>
+<div class="grid2">
+<div><label for="map">Redirect map</label><textarea id="map" spellcheck="false">
+/about-us/, /about, 301
+/services/web-design/, /services/web-design, 301
+/services/seo/, /services/search, 301
+/services/search, /seo, 301
+/blog/2023/05/site-speed-tips/, /blog/site-speed-tips, 301
+/category/news/, /, 301
+/old-offer/, /old-offer-2/, 302
+/old-offer-2/, /old-offer/, 301
+/About-Us/, /about, 301
+/contact/, /contact/, 301
+/about-us/, /company, 301
+/?p=482, /blog/site-speed-tips, 301</textarea><p class="hint">Format: <code>/old-path/, /new-path, 301</code>. Full URLs work too.</p></div>
+<div><label for="old">Old URLs (optional)</label><textarea id="old" spellcheck="false">
+/about-us/
+/services/web-design/
+/services/seo/
+/blog/2023/05/site-speed-tips/
+/blog/2023/02/local-seo-checklist/
+/category/news/
+/tag/wordpress/
+/contact/
+/pricing/
+/feed/
+/wp-content/uploads/2023/05/speed-chart.png
+/?p=482
+/page/2/</textarea><p class="hint">One URL or path per line, from the crawl, the sitemaps or Search Console.</p></div>
+</div>
+<div class="row">
+<label><input type="checkbox" id="ts" checked> New site uses no trailing slash (Next.js default)</label>
+<button id="run">Check the map</button>
+<button class="sec" id="clear">Clear</button>
+</div>
+<div id="out"></div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Requirements sheet for the developer (excerpt)</h2>
+<p class="sub">What the developer receives, written so each line can be ticked off and tested on staging.</p>
+<div class="check">
+<div><h3>URLs and redirects</h3><p>Every old URL that returned 200 either keeps its path or has one 301/308 rule straight to its final new URL. No chains, no loops, no blanket redirect of old pages to the home page. One trailing-slash rule for the whole site, set in <code>next.config.js</code>.</p></div>
+<div><h3>Status codes</h3><p>Removed pages with no equivalent return a real 404 (or 410), not a 200 "not found" page. The 404 page itself returns status 404.</p></div>
+<div><h3>Titles and descriptions</h3><p>Each template sets title and meta description through <code>generateMetadata</code> (or the page's metadata export), carried over from the current site for every "must keep" page.</p></div>
+<div><h3>Canonical tags</h3><p>Absolute, self-referencing canonical on every indexable page, on the production domain, never the <code>*.vercel.app</code> address.</p></div>
+<div><h3>Indexing controls</h3><p>Preview and staging builds send <code>noindex</code>; production does not. <code>robots.txt</code> and <code>sitemap.xml</code> generated (for example <code>app/robots.ts</code> and <code>app/sitemap.ts</code>) and listing only final 200 URLs.</p></div>
+<div><h3>Rendering</h3><p>Main content, links and headings are in the HTML the server sends (static or server rendering), so search engines see them without running scripts.</p></div>
+<div><h3>Structured data</h3><p>JSON-LD that the SEO plugin wrote today (Organization, Article, Breadcrumb, FAQ, Product) is rebuilt per template and passes the Rich Results test.</p></div>
+<div><h3>Images and media</h3><p>Files under <code>/wp-content/uploads/</code> that have traffic or backlinks are redirected or kept. Alt texts carried over; <code>next/image</code> with set sizes to protect layout stability.</p></div>
+<div><h3>Internal links</h3><p>Menus, body links and breadcrumbs point straight at the final URLs, not at addresses that redirect.</p></div>
+<div><h3>Speed</h3><p>Core Web Vitals on the main templates measured on staging and kept at or better than today: LCP, INP and CLS.</p></div>
+</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>What you get</h2>
+<p class="sub">For a migration like this one, delivered as files you keep:</p>
+<ul>
+<li>URL inventory (spreadsheet) with status, metadata, canonical and schema per URL, and the "must keep" pages marked</li>
+<li>Redirect map, checked, plus ready-to-paste <code>redirects()</code> config</li>
+<li>The requirements sheet above, filled in for your site and templates</li>
+<li>Staging QA report: old site vs new build, page for page, with every gap listed</li>
+<li>Launch-day check and a short follow-up report on indexing and 404s</li>
+</ul>
+<p class="note">The checker on this page is a reduced version of the one used in the work. Example data on this page is invented.</p>
+</div></section>
+</main>
+
+<footer><div class="wrap">Jonas, Digital Assistant at WIGGEN DIGITAL (Norway), org. no. 934956605</div></footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const SL=String.fromCharCode(47); // slash
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function norm(u){
+  u=u.trim(); if(!u) return '';
+  let host='';
+  const m=u.match(/^https?:\/\/([^\/?#]+)(.*)$/i);
+  if(m){host=m[1].toLowerCase().replace(/^www\./,'');u=m[2]||SL;}
+  if(!u.startsWith(SL)) u=SL+u;
+  u=u.split('#')[0];
+  return {host,path:u};
+}
+function key(p){return p.path}
+function stripSlash(p){if(p.length>1&&p.endsWith(SL)&&!p.includes('?'))return p.slice(0,-1);return p}
+function run(){
+  const lines=$('map').value.split(/\r?\n/);
+  const rules=[];const issues=[];
+  const add=(sev,line,what,fix)=>issues.push({sev,line,what,fix});
+  lines.forEach((ln,i)=>{
+    const t=ln.trim(); if(!t||t.startsWith('#')) return;
+    const parts=t.split(/[,\t;]+/).map(s=>s.trim()).filter(Boolean);
+    if(parts.length<2){add('bad',i+1,'Line has no target: <code>'+esc(t)+'</code>','Write it as <code>old, new, 301</code>.');return;}
+    const from=norm(parts[0]),to=norm(parts[1]);
+    const code=parts[2]?parseInt(parts[2],10):301;
+    rules.push({n:i+1,from,to,code,raw:t});
+  });
+  // duplicates (exact and case/slash variants)
+  const seen={};
+  rules.forEach(r=>{
+    const k=r.from.path;
+    if(seen[k]){
+      const a=seen[k];
+      if(stripSlash(a.to.path)!==stripSlash(r.to.path)) add('bad',r.n,'Same old URL <code>'+esc(k)+'</code> has two different targets (lines '+a.n+' and '+r.n+').','Keep one rule; the first match wins, so line '+r.n+' never runs.');
+      else add('warn',r.n,'Duplicate rule for <code>'+esc(k)+'</code> (also line '+a.n+').','Remove one of them.');
+    } else seen[k]=r;
+  });
+  const lower={};
+  rules.forEach(r=>{const k=r.from.path.toLowerCase();if(lower[k]&&lower[k].from.path!==r.from.path)add('info',r.n,'<code>'+esc(r.from.path)+'</code> differs from line '+lower[k].n+' only in upper/lower case.','Fine if both versions had links; otherwise one lowercase rule plus a lowercase policy is simpler.');else if(!lower[k])lower[k]=r;});
+  const byFrom={};rules.forEach(r=>{if(!byFrom[r.from.path])byFrom[r.from.path]=r});
+  const byFromLoose={};rules.forEach(r=>{const k=stripSlash(r.from.path);if(!byFromLoose[k])byFromLoose[k]=r});
+  const finals={};
+  rules.forEach(r=>{
+    const sameHost=(!r.to.host||!r.from.host||r.to.host===r.from.host);
+    if(r.from.path===r.to.path&&sameHost){
+      add('bad',r.n,'Rule sends <code>'+esc(r.from.path)+'</code> to itself.','Delete it. A rule that points at its own URL is an endless loop.');finals[r.n]=null;return;}
+    if(stripSlash(r.from.path)===stripSlash(r.to.path)&&sameHost){
+      add('info',r.n,'Rule only changes the trailing slash (<code>'+esc(r.from.path)+'</code> → <code>'+esc(r.to.path)+'</code>).','Not needed as a rule: the site-wide <code>trailingSlash</code> setting handles every URL like this in one place.');finals[r.n]=null;return;}
+    if([302,303,307].includes(r.code)) add('warn',r.n,'Temporary redirect ('+r.code+') for a page that moves for good.','Use 301, or <code>permanent: true</code> in Next.js (that sends 308; search engines treat it like 301).');
+    if(r.from.path.length>1&&(r.to.path===SL||r.to.path==='')) add('warn',r.n,'Deep URL <code>'+esc(r.from.path)+'</code> is sent to the home page.','Search engines often treat this as a soft 404 and drop the page\'s value. Map it to the closest matching page, or return 410 if nothing matches.');
+    // follow chain
+    let cur=r,hops=0,path=[r.from.path],loop=false;
+    while(true){
+      const nxt=byFrom[cur.to.path]||byFromLoose[stripSlash(cur.to.path)];
+      if(!nxt||nxt===cur) break;
+      if(path.includes(nxt.from.path)||hops>20){loop=true;break}
+      path.push(nxt.from.path);cur=nxt;hops++;
+    }
+    if(loop){add('bad',r.n,'Redirect loop: <code>'+esc(path.join(' → '))+'</code> → back again.','Decide the one final URL and point every rule straight at it.');finals[r.n]=null;}
+    else if(hops>0){add('warn',r.n,'Chain of '+(hops+1)+' hops: <code>'+esc(path.join(' → ')+' → '+cur.to.path)+'</code>.','Point the old URL straight at <code>'+esc(cur.to.path)+'</code>. The generated config below already does.');finals[r.n]=cur.to;}
+    else finals[r.n]=r.to;
+    if($('ts').checked&&r.to.path.length>1&&r.to.path.endsWith(SL)&&!r.to.path.includes('?')) add('warn',r.n,'Target <code>'+esc(r.to.path)+'</code> ends with a slash, but the new site uses none.','Next.js will add a second hop to <code>'+esc(stripSlash(r.to.path))+'</code>. Drop the slash in the target.');
+    if(r.from.path.includes('?')) add('info',r.n,'Old URL carries a query string (<code>'+esc(r.from.path)+'</code>).','Next.js matches on the path only; this needs a <code>has: [{type:"query", ...}]</code> condition (written for you below) or middleware.');
+    if(r.from.host&&r.to.host&&r.from.host!==r.to.host) add('info',r.n,'Rule changes the host ('+esc(r.from.host)+' → '+esc(r.to.host)+').','Host changes (www or not) belong in the Vercel domain settings, one rule for the whole site, not per page.');
+  });
+  // coverage
+  const olds=$('old').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const missing=[];
+  olds.forEach(o=>{const p=norm(o).path;if(!byFrom[p]&&!byFromLoose[stripSlash(p)])missing.push(p)});
+  const pat=[[/^\/feed\/?$|\/feed\/?$/,'RSS feed: keep a feed at the same address or redirect it to the new one, so readers and aggregators follow.'],
+             [/^\/tag\//,'Tag archive: map to the matching topic page, or let it return 404/410 if tags are dropped.'],
+             [/^\/category\//,'Category archive: map to the matching section page.'],
+             [/\/page\/\d+\/?$/,'Paginated archive: decide whether the new list pages keep this pattern; if not, map page 1 and let the rest 404.'],
+             [/^\/wp-content\/uploads\//,'Uploaded file: if it has backlinks or image-search traffic, keep it at the old path or redirect it.'],
+             [/^\/\d{4}\/\d{2}\//,'Date-based post URL: needs a pattern rule.']];
+  missing.forEach(p=>{let why='No rule and no matching new page known. If the page still exists at the same path on the new site, fine; otherwise it will 404.';pat.forEach(([re,t])=>{if(re.test(p))why=t});add('bad','–','Old URL <code>'+esc(p)+'</code> has no rule.',why)});
+  // output
+  const nb=issues.filter(x=>x.sev==='bad').length,nw=issues.filter(x=>x.sev==='warn').length,ni=issues.filter(x=>x.sev==='info').length;
+  let h='<div class="sum"><span class="pill">'+rules.length+' rules read</span>'+(olds.length?'<span class="pill">'+olds.length+' old URLs, '+(olds.length-missing.length)+' covered</span>':'')+'<span class="pill bad">'+nb+' errors</span><span class="pill warn">'+nw+' warnings</span><span class="pill">'+ni+' notes</span>'+(nb+nw===0?'<span class="pill ok">Map looks clean</span>':'')+'</div>';
+  if(issues.length){h+='<div class="tblwrap"><table><thead><tr><th>Level</th><th>Line</th><th>Finding</th><th>What to do</th></tr></thead><tbody>';
+    const ord={bad:0,warn:1,info:2};issues.sort((a,b)=>ord[a.sev]-ord[b.sev]);
+    issues.forEach(x=>{h+='<tr><td class="sev '+x.sev+'">'+({bad:'Error',warn:'Warning',info:'Note'}[x.sev])+'</td><td>'+x.line+'</td><td>'+x.what+'</td><td>'+x.fix+'</td></tr>'});
+    h+='</tbody></table></div>';}
+  // generate config
+  const done=new Set();const nx=[],vc=[];
+  rules.forEach(r=>{const f=finals[r.n];if(!f)return;if(done.has(r.from.path))return;done.add(r.from.path);
+    if(r.from.host&&f.host&&r.from.host!==f.host&&stripSlash(r.from.path)===stripSlash(f.path))return;
+    let dest=$('ts').checked?stripSlash(f.path):f.path;
+    let [src,q]=r.from.path.split('?');
+    if($('ts').checked) src=stripSlash(src);
+    const dk='k:'+src+'?'+(q||'');if(done.has(dk))return;done.add(dk);
+    const o={source:src,destination:dest,permanent:true};
+    if(q){const [qk,qv]=q.split('=');o.has=[{type:'query',key:qk,value:qv||undefined}];}
+    nx.push(o);const v={source:src,destination:dest,permanent:true};if(o.has)v.has=o.has;vc.push(v);});
+  const js=SL+SL+' next.config.js\nmodule.exports = {\n  trailingSlash: '+(!$('ts').checked)+',\n  async redirects() {\n    return '+JSON.stringify(nx,null,2).replace(/\n/g,'\n    ')+';\n  },\n};';
+  const vj=JSON.stringify({trailingSlash:!$('ts').checked,redirects:vc},null,2);
+  h+='<h3 class="cfgh">Generated config</h3><p class="note">Chains collapsed to one target; loops, self-redirects and slash-only rules left out. With <code>trailingSlash: false</code>, Next.js removes the slash before it reads the rules, so sources are written without it.</p><div class="tabs"><button class="sec" data-t="a">next.config.js</button><button class="sec" data-t="b">vercel.json</button></div><pre id="cfg"></pre>';
+  $('out').innerHTML=h;
+  const cfg=$('cfg');cfg.textContent=js;
+  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{cfg.textContent=b.dataset.t==='a'?js:vj});
+}
+$('run').onclick=run;$('clear').onclick=()=>{$('map').value='';$('old').value='';$('out').innerHTML=''};
+run();
+</script>
+</body>
+</html>
